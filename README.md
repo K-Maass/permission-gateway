@@ -1,4 +1,4 @@
-# PAOS Core
+# Permission Gateway (PAOS Core)
 
 A local control plane for agent tasks, artifacts, and consequential actions. Submit a sample changelog for release
 review, see why PAOS selected a worker, and inspect the draft before deciding whether to record it.
