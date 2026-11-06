@@ -1,0 +1,43 @@
+[project]
+name = "paos-core"
+version = "0.1.0"
+description = "A single-operator control plane for agent tasks, effects and artifacts"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "a2a-sdk[http-server]==1.1.2",
+  "ag-ui-protocol==0.1.20",
+  "fastapi==0.141.1",
+  "httpx==0.28.1",
+  "paos-domain",
+  "paos-protocol",
+  "psycopg[binary]==3.3.4",
+  "uvicorn==0.52.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+paos-domain = { workspace = true }
+paos-protocol = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/domain", "packages/protocol"]
+
+[dependency-groups]
+dev = [
+  "playwright==1.62.0",
+  "pytest==9.1.1",
+  "pyyaml==6.0.3",
+  "ruff==0.16.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--strict-markers"
+markers = ["system: runs against a fresh Compose stack and real browser"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100

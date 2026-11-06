@@ -1,0 +1,95 @@
+name: paos-core
+
+x-app: &app
+  image: ${PAOS_IMAGE:-${COMPOSE_PROJECT_NAME:-paos-core}:local}
+  pull_policy: never
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs: ["/tmp:mode=1777,size=32m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  db:
+    image: postgres:16-alpine@sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${PAOS_DB_ADMIN_PASSWORD:?Run ./scripts/setup first}
+      PAOS_DB_PASSWORD: ${PAOS_DB_PASSWORD:?Run ./scripts/setup first}
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./scripts/initdb.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    networks: [core]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U paos -d paos"]
+      interval: 2s
+      timeout: 3s
+      retries: 25
+
+  api:
+    <<: *app
+    build: .
+    command: ["uvicorn", "paos_core.api:app", "--host", "0.0.0.0", "--port", "8080", "--no-proxy-headers", "--no-access-log"]
+    environment:
+      PAOS_DATABASE_URL: postgresql://paos:${PAOS_DB_PASSWORD:?Run ./scripts/setup first}@db:5432/paos
+      PAOS_OPERATOR_TOKEN: ${PAOS_OPERATOR_TOKEN:?Run ./scripts/setup first}
+      PAOS_WORKER_URL: http://worker:9000
+      PAOS_PUBLIC_WORKER_URL: http://worker-public:9000
+      PAOS_WEB_DIR: /app/web/dist
+      PAOS_APPROVAL_SECONDS: ${PAOS_APPROVAL_SECONDS:-300}
+    depends_on:
+      db: {condition: service_healthy}
+    ports:
+      - "127.0.0.1:${PAOS_PORT:-8765}:8080"
+    networks: [core, edge]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  gateway:
+    <<: *app
+    command: ["python", "-m", "paos_core.gateway"]
+    environment:
+      PAOS_DATABASE_URL: postgresql://paos:${PAOS_DB_PASSWORD:?Run ./scripts/setup first}@db:5432/paos
+      PAOS_WORKER_URL: http://worker:9000
+      PAOS_PUBLIC_WORKER_URL: http://worker-public:9000
+      PAOS_APPROVAL_SECONDS: ${PAOS_APPROVAL_SECONDS:-300}
+    depends_on:
+      db: {condition: service_healthy}
+      worker: {condition: service_healthy}
+    networks: [core, agents]
+    healthcheck:
+      test: ["CMD", "python", "-c", "from paos_core.gateway import healthy; raise SystemExit(0 if healthy() else 1)"]
+      interval: 3s
+      timeout: 4s
+      retries: 20
+
+  worker:
+    <<: *app
+    command: ["uvicorn", "paos_core.worker:app", "--host", "0.0.0.0", "--port", "9000", "--no-proxy-headers", "--no-access-log"]
+    environment:
+      PAOS_WORKER_URL: http://worker:9000
+      PAOS_FIXTURE_STEP_DELAY: ${PAOS_FIXTURE_STEP_DELAY:-0.8}
+    networks: [agents]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/.well-known/agent-card.json', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  worker-public:
+    <<: *app
+    command: ["uvicorn", "paos_core.worker:app", "--host", "0.0.0.0", "--port", "9000", "--no-proxy-headers", "--no-access-log"]
+    environment:
+      PAOS_WORKER_URL: http://worker-public:9000
+    networks: [agents]
+
+networks:
+  core: {internal: true}
+  agents: {internal: true}
+  edge: {}
+volumes:
+  database: {}

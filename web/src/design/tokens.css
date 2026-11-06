@@ -1,0 +1,73 @@
+/* Adapted from the PAOS control console's warm neutrals, cobalt accent,
+   semantic tones, system type stack, and presence plate. */
+:root {
+  color-scheme: light;
+  --bg: #faf9f8;
+  --surface: #ffffff;
+  --raised: #f3f2f0;
+  --sunken: #edecea;
+  --line: #dbd9d5;
+  --line-soft: #e6e4e1;
+  --text: #191817;
+  --text-2: #5c5a57;
+  --accent: #1743c3;
+  --accent-hover: #123aad;
+  --accent-weak: #eaeefb;
+  --accent-quiet: #f4f6fd;
+  --accent-line: #b6c5f0;
+  --on-accent: #ffffff;
+  --tone-good: #0f7048;
+  --tone-good-weak: #e4f2ea;
+  --tone-attention: #8a5a00;
+  --tone-attention-weak: #f9efdc;
+  --tone-bad: #a52a22;
+  --tone-bad-weak: #fbeceb;
+  --plate-hi: #ffffff;
+  --plate-mid: #d7d4cf;
+  --plate-lo: #a6a29c;
+  --plate-edge: rgba(25, 24, 23, .28);
+  --slot-bg: #6f6b66;
+  --plate-bar: #ffffff;
+  --shadow-1: 0 1px 2px rgba(25, 24, 23, .06);
+  --shadow-2: 0 6px 22px -10px rgba(25, 24, 23, .20);
+  --sans: ui-sans-serif, -apple-system, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --r-sm: 6px;
+  --r-md: 9px;
+  --r-lg: 14px;
+  --r-full: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #100f0e;
+    --surface: #171614;
+    --raised: #1e1d1b;
+    --sunken: #131211;
+    --line: #33302c;
+    --line-soft: #262421;
+    --text: #eceae7;
+    --text-2: #a09c97;
+    --accent: #5b8def;
+    --accent-hover: #7aa2f4;
+    --accent-weak: #16203a;
+    --accent-quiet: #12161f;
+    --accent-line: #2c4068;
+    --on-accent: #08122b;
+    --tone-good: #4bbd8a;
+    --tone-good-weak: #12241d;
+    --tone-attention: #dda23f;
+    --tone-attention-weak: #251d0e;
+    --tone-bad: #ef7d76;
+    --tone-bad-weak: #2a1614;
+    --plate-hi: #d8d4ce;
+    --plate-mid: #8d8983;
+    --plate-lo: #46433f;
+    --plate-edge: rgba(0, 0, 0, .7);
+    --slot-bg: #0a0a09;
+    --plate-bar: #f2efeb;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+    --shadow-2: 0 8px 26px -12px rgba(0, 0, 0, .8);
+  }
+}

@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+if [ -f .env ]; then
+    printf '%s\n' 'Existing .env kept.'
+    exit 0
+fi
+umask 077
+temporary=$(mktemp ./.env.XXXXXX)
+trap 'rm -f "$temporary"' EXIT HUP INT TERM
+operator=$(openssl rand -hex 32)
+admin=$(openssl rand -hex 32)
+database=$(openssl rand -hex 32)
+printf 'PAOS_OPERATOR_TOKEN=%s\nPAOS_DB_ADMIN_PASSWORD=%s\nPAOS_DB_PASSWORD=%s\n' \
+    "$operator" "$admin" "$database" > "$temporary"
+if ln "$temporary" .env; then
+    printf '%s\n' 'Local credentials created in .env.'
+elif [ ! -f .env ]; then
+    exit 1
+fi

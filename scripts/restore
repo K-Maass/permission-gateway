@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+    printf '%s\n' 'Usage: ./scripts/restore PATH.dump' >&2
+    exit 2
+fi
+if [ -n "$(docker compose ps --status running --services api gateway)" ]; then
+    printf '%s\n' 'Restore into a fresh Compose project with only db running.' >&2
+    exit 1
+fi
+empty=$(docker compose exec -T db psql -U postgres -d paos -Atc \
+    "SELECT NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public')")
+if [ "$empty" != t ]; then
+    printf '%s\n' 'Restore requires an empty PAOS database.' >&2
+    exit 1
+fi
+docker compose exec -T db pg_restore --username postgres --dbname paos \
+    --role paos --no-owner --no-acl --single-transaction --exit-on-error < "$1"
+# Login sessions are installation-specific. Discard them before starting the restored app.
+docker compose exec -T db psql -U postgres -d paos -v ON_ERROR_STOP=1 \
+    -c 'TRUNCATE TABLE public.operator_sessions' >/dev/null

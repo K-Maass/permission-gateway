@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+if [ "$#" -ne 1 ]; then
+    printf '%s\n' 'Usage: ./scripts/backup PATH.dump' >&2
+    exit 2
+fi
+output=$1
+umask 077
+temporary=$(mktemp "${output}.XXXXXX")
+trap 'rm -f "$temporary"' EXIT HUP INT TERM
+docker compose exec -T db pg_dump --username postgres --dbname paos \
+    --format custom --no-owner --no-acl --exclude-table-data=public.operator_sessions > "$temporary"
+if ! ln "$temporary" "$output"; then
+    printf '%s\n' 'Choose a backup path that does not already exist.' >&2
+    exit 1
+fi

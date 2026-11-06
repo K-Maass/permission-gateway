@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+if [ ! -f .env ]; then
+    printf '%s\n' 'Run ./scripts/setup first.' >&2
+    exit 1
+fi
+awk -F= '$1 == "PAOS_OPERATOR_TOKEN" { print $2; found=1; exit } END { if (!found) exit 1 }' .env

@@ -1,0 +1,20 @@
+[project]
+name = "paos-protocol"
+version = "0.1.0"
+description = "A2A adapter and AG-UI stream framing for PAOS"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.9",
+    "paos-domain",
+    "a2a-sdk>=1.1.2",
+    # AG-UI is the first-party UI boundary (master spec 2.1). Same rule as A2A: the
+    # official SDK owns the event vocabulary, this package owns the translation.
+    "ag-ui-protocol>=0.1.20",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/paos_protocol"]

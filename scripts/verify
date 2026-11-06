@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")/.."
+export COMPOSE_PROJECT_NAME="paos-verify-$$"
+export PAOS_PORT
+PAOS_PORT=$(uv run --locked python -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')
+export PAOS_TEST_URL="http://127.0.0.1:$PAOS_PORT"
+export PAOS_IMAGE="$COMPOSE_PROJECT_NAME:local"
+export PAOS_APPROVAL_SECONDS=300
+export PAOS_OPERATOR_TOKEN PAOS_DB_ADMIN_PASSWORD PAOS_DB_PASSWORD
+PAOS_OPERATOR_TOKEN=$(openssl rand -hex 32)
+PAOS_DB_ADMIN_PASSWORD=$(openssl rand -hex 32)
+PAOS_DB_PASSWORD=$(openssl rand -hex 32)
+export PAOS_TEST_TOKEN="$PAOS_OPERATOR_TOKEN"
+export PAOS_FIXTURE_STEP_DELAY=2
+cleanup() {
+    status=$?
+    if [ "$status" -ne 0 ]; then
+        docker compose ps >&2 || true
+        docker compose logs --tail=30 api gateway worker >&2 || true
+    fi
+    docker rm -f "$COMPOSE_PROJECT_NAME-unit-db" >/dev/null 2>&1 || true
+    docker compose down --volumes --remove-orphans >&2 || true
+    docker image rm "$COMPOSE_PROJECT_NAME:local" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+docker compose up --build -d --wait --wait-timeout 90
+docker image inspect "$PAOS_IMAGE" --format 'Runtime image {{.Os}}/{{.Architecture}}'
+if [ -n "${PAOS_BUILD_AUDIT_DIR:-}" ]; then
+    mkdir -p "$PAOS_BUILD_AUDIT_DIR"
+    docker compose cp api:/app/. "$PAOS_BUILD_AUDIT_DIR/"
+fi
+if [ "${PAOS_RECORD_ONLY:-0}" = 1 ]; then
+    uv run --locked python scripts/record_demo.py
+    exit
+fi
+# The integration fixture creates its own schemas in a disposable local Postgres.
+unit_password=$(openssl rand -hex 32)
+docker run --rm -d --name "$COMPOSE_PROJECT_NAME-unit-db" \
+    -e "POSTGRES_PASSWORD=$unit_password" -p 127.0.0.1::5432 \
+    postgres:16-alpine@sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb >/dev/null
+tries=0
+until docker exec "$COMPOSE_PROJECT_NAME-unit-db" pg_isready -h 127.0.0.1 -U postgres >/dev/null; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 30 ] || exit 1
+    sleep 1
+done
+unit_port=$(docker port "$COMPOSE_PROJECT_NAME-unit-db" 5432/tcp | sed 's/.*://')
+export PAOS_TEST_DATABASE_URL="postgresql://postgres:$unit_password@127.0.0.1:$unit_port/postgres"
+uv run --locked pytest -q --tb=short
+if [ -n "${PAOS_DEMO_RECORDING_DIR:-}" ]; then
+    uv run --locked python scripts/record_demo.py
+fi
