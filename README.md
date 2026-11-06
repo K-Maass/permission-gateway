@@ -8,7 +8,7 @@ review, see why PAOS selected a worker, and inspect the draft before deciding wh
 ## Run the walkthrough
 
 Requirements are Git, Docker Engine 28 or later with Compose v2, and OpenSSL. On macOS, start
-Docker Desktop first.
+Docker Desktop first. Run these commands from your checkout.
 
 ```sh
 ./scripts/setup
@@ -19,6 +19,10 @@ docker compose up --build --wait -d
 Open **http://127.0.0.1:8765** and enter the local operator token printed by the last command.
 Start a release review. The two draft versions, diff, approval, and receipt all belong to one
 task. Open **Governed memory** to see which synthetic claims are eligible for task context.
+
+Try the [restart and denial walkthrough](docs/recovery-walkthrough.md). The test suite checks
+that a blocked peer receives no task data, a restart does not dispatch twice, and a crash
+between the register write and receipt does not repeat the write.
 
 The stack runs entirely on your machine with a scripted A2A worker. Set `PAOS_PORT` before
 starting if the default port is already in use. `docker compose down` stops the stack and retains
@@ -57,3 +61,6 @@ uses PAOS's SSE envelope to apply each snapshot at a durable sequence number.
 
 See [integration and operations](docs/operations.md) for extension contracts, verification,
 and recovery.
+
+PAOS Core is available under the [MIT license](LICENSE). See the [contribution guide](CONTRIBUTING.md)
+and [security reporting policy](SECURITY.md).

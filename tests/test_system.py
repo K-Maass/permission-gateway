@@ -74,7 +74,8 @@ def dispatches(worker):
     )
 
 
-def test_browser_run_recovers_gateway_and_stream(client):
+@pytest.mark.parametrize("action", ["Approve", "Deny"])
+def test_browser_run_recovers_gateway_and_stream(client, action):
     registered_before = sql("SELECT count(*) FROM sample_register")
     selected_before = dispatches("worker")
     excluded_before = dispatches("worker-public")
@@ -131,10 +132,15 @@ def test_browser_run_recovers_gateway_and_stream(client):
         assert dispatches("worker") == selected_before + 1
         assert dispatches("worker-public") == excluded_before
 
-        page.get_by_role("button", name="Approve", exact=True).click()
-        expect(page.get_by_test_id("task-status")).to_have_text("Succeeded", timeout=20_000)
+        page.get_by_role("button", name=action, exact=True).click()
+        status = "Succeeded" if action == "Approve" else "Denied"
+        expect(page.get_by_test_id("task-status")).to_have_text(status, timeout=20_000)
         done = task(client, task_id)
-        assert done["receipt"]["artifact_sha256"] == done["artifacts"][1]["sha256"]
+        if action == "Approve":
+            assert done["receipt"]["artifact_sha256"] == done["artifacts"][1]["sha256"]
+        else:
+            assert done["receipt"] is None
+            assert sql("SELECT count(*) FROM sample_register") == registered_before
         response = client.get(f"/api/tasks/{task_id}/artifacts/2").raise_for_status()
         assert response.text == done["artifacts"][1]["text"]
         with page.expect_download() as download:
